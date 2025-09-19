@@ -1,0 +1,167 @@
+.enhanced-form-demo {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.enhanced-form-demo .ant-card-head {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.enhanced-form-demo .ant-card-head-title {
+  color: white;
+  font-weight: 600;
+}
+
+.enhanced-form-demo .ant-card-extra .ant-btn {
+  margin-left: 8px;
+}
+
+.enhanced-form-demo .ant-card-body {
+  padding: 24px;
+}
+
+/* 表单字段样式优化 */
+.enhanced-form-demo .fr-field-group {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 8px;
+  border-left: 4px solid #1890ff;
+}
+
+.enhanced-form-demo .fr-field-group .fr-label-title {
+  color: #1890ff;
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 16px;
+}
+
+.enhanced-form-demo .fr-field-group .fr-desc {
+  color: #666;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+/* 联动字段的动画效果 */
+.enhanced-form-demo .fr-field.fade-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.enhanced-form-demo .fr-field.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.enhanced-form-demo .fr-field.fade-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.enhanced-form-demo .fr-field.fade-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* 加载状态的选择框样式 */
+.enhanced-form-demo .ant-select.loading {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 禁用状态的字段样式 */
+.enhanced-form-demo .ant-select-disabled {
+  background-color: #f5f5f5;
+  color: #bfbfbf;
+}
+
+.enhanced-form-demo .ant-input[disabled] {
+  background-color: #f5f5f5;
+  color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+/* 错误状态样式 */
+.enhanced-form-demo .fr-field.has-error .ant-select,
+.enhanced-form-demo .fr-field.has-error .ant-input {
+  border-color: #ff4d4f;
+}
+
+.enhanced-form-demo .fr-field.has-error .fr-error {
+  color: #ff4d4f;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* 成功状态样式 */
+.enhanced-form-demo .fr-field.has-success .ant-select,
+.enhanced-form-demo .fr-field.has-success .ant-input {
+  border-color: #52c41a;
+}
+
+/* 预览弹窗样式 */
+.enhanced-form-demo .ant-modal-body pre {
+  background: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  padding: 16px;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .enhanced-form-demo {
+    padding: 16px;
+  }
+
+  .enhanced-form-demo .ant-card-body {
+    padding: 16px;
+  }
+
+  .enhanced-form-demo .fr-field-group {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .enhanced-form-demo .ant-card-extra .ant-btn {
+    margin-left: 4px;
+    margin-bottom: 4px;
+  }
+}
+
+/* 深色主题支持 */
+@media (prefers-color-scheme: dark) {
+  .enhanced-form-demo .fr-field-group {
+    background: #262626;
+    border-left-color: #1890ff;
+  }
+
+  .enhanced-form-demo .fr-field-group .fr-desc {
+    color: #a0a0a0;
+  }
+
+  .enhanced-form-demo .ant-modal-body pre {
+    background: #1f1f1f;
+    border-color: #434343;
+    color: #e0e0e0;
+  }
+}

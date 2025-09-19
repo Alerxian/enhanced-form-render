@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FormRender, { useForm, type Schema } from "form-render";
-import { Button, Card, Space, Modal } from "antd";
+import { Button, Card, Space, Modal, message } from "antd";
 import "./AdvancedFormDemo.css";
 
 // 表单数据类型定义
@@ -22,6 +22,14 @@ interface FormData {
       league?: "a" | "b" | "c";
     }>;
   };
+  asyncDemo?: {
+    department?: string;
+    employee?: string;
+    notification?: "email" | "sms" | "phone";
+  };
+  select?: {
+    select?: string;
+  };
 }
 
 interface AdvancedFormDemoProps {
@@ -36,9 +44,141 @@ const AdvancedFormDemo: React.FC<AdvancedFormDemoProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [previewVisible, setPreviewVisible] = useState<boolean>(false);
   const [formData, setFormData] = useState<FormData>(initialData);
+
+  // 异步选项状态
+  const [selectOptions, setSelectOptions] = useState<{
+    enum: string[];
+    enumNames: string[];
+  }>({ enum: [], enumNames: [] });
+  const [departmentOptions, setDepartmentOptions] = useState<{
+    enum: string[];
+    enumNames: string[];
+  }>({ enum: [], enumNames: [] });
+  const [employeeOptions, setEmployeeOptions] = useState<{
+    enum: string[];
+    enumNames: string[];
+  }>({ enum: [], enumNames: [] });
+
+  // 加载状态
+  const [optionsLoading, setOptionsLoading] = useState<boolean>(true);
+  const [departmentLoading, setDepartmentLoading] = useState<boolean>(true);
+  const [employeeLoading, setEmployeeLoading] = useState<boolean>(false);
+
   const form = useForm();
 
-  // 动态表单Schema - 实现真正的联动功能
+  // 模拟异步接口获取选项数据
+  const fetchSelectOptions = async (): Promise<{
+    enum: string[];
+    enumNames: string[];
+  }> => {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return {
+      enum: ["option1", "option2", "option3", "option4"],
+      enumNames: ["动态选项1", "动态选项2", "动态选项3", "动态选项4"],
+    };
+  };
+
+  // 模拟获取部门数据
+  const fetchDepartmentData = async (): Promise<{
+    enum: string[];
+    enumNames: string[];
+  }> => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return {
+      enum: ["tech", "sales", "hr", "finance"],
+      enumNames: ["技术部", "销售部", "人事部", "财务部"],
+    };
+  };
+
+  // 模拟获取员工数据（依赖部门）
+  const fetchEmployeeData = async (
+    department: string
+  ): Promise<{
+    enum: string[];
+    enumNames: string[];
+  }> => {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    const employeesByDept: Record<
+      string,
+      Array<{ id: string; name: string; position: string }>
+    > = {
+      tech: [
+        { id: "tech001", name: "张三", position: "前端工程师" },
+        { id: "tech002", name: "李四", position: "后端工程师" },
+        { id: "tech003", name: "王五", position: "架构师" },
+      ],
+      sales: [
+        { id: "sales001", name: "赵六", position: "销售经理" },
+        { id: "sales002", name: "钱七", position: "销售代表" },
+      ],
+      hr: [
+        { id: "hr001", name: "孙八", position: "HR经理" },
+        { id: "hr002", name: "周九", position: "HR专员" },
+      ],
+      finance: [{ id: "fin001", name: "吴十", position: "财务经理" }],
+    };
+
+    const employees = employeesByDept[department] || [];
+    return {
+      enum: employees.map((emp) => emp.id),
+      enumNames: employees.map((emp) => `${emp.name} - ${emp.position}`),
+    };
+  };
+
+  // 组件挂载时获取数据
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setOptionsLoading(true);
+        setDepartmentLoading(true);
+
+        const [selectOpts, deptOpts] = await Promise.all([
+          fetchSelectOptions(),
+          fetchDepartmentData(),
+        ]);
+
+        setSelectOptions(selectOpts);
+        setDepartmentOptions(deptOpts);
+      } catch (error) {
+        console.error("获取初始数据失败:", error);
+        message.error("获取数据失败");
+      } finally {
+        setOptionsLoading(false);
+        setDepartmentLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  // 处理表单值变化
+  const handleValuesChange = async (_: unknown, allValues: FormData) => {
+    setFormData(allValues);
+
+    // 监听部门变化，重新获取员工数据
+    const currentDept = allValues.asyncDemo?.department;
+    const previousDept = formData.asyncDemo?.department;
+
+    if (currentDept && currentDept !== previousDept) {
+      try {
+        setEmployeeLoading(true);
+        setEmployeeOptions({ enum: [], enumNames: [] });
+
+        const empOpts = await fetchEmployeeData(currentDept);
+        setEmployeeOptions(empOpts);
+      } catch (error) {
+        console.error("获取员工数据失败:", error);
+        message.error("获取员工数据失败");
+      } finally {
+        setEmployeeLoading(false);
+      }
+    } else if (!currentDept) {
+      setEmployeeOptions({ enum: [], enumNames: [] });
+    }
+  };
+
+  // 动态表单Schema - 展示统一的异步数据配置方案
   const schema: Schema = {
     type: "object",
     properties: {
@@ -92,8 +232,65 @@ const AdvancedFormDemo: React.FC<AdvancedFormDemoProps> = ({
           },
         },
       },
+      asyncDemo: {
+        title: "案例3：统一Schema异步数据演示",
+        type: "object",
+        description: "展示如何通过统一配置实现异步数据获取和字段联动",
+        properties: {
+          department: {
+            title: "部门",
+            type: "string",
+            widget: "select",
+            placeholder: departmentLoading ? "正在加载部门..." : "请选择部门",
+            disabled: departmentLoading,
+            required: true,
+            enum: departmentOptions.enum,
+            enumNames: departmentOptions.enumNames,
+          },
+          employee: {
+            title: "员工",
+            type: "string",
+            widget: "select",
+            placeholder: employeeLoading
+              ? "正在加载员工..."
+              : formData.asyncDemo?.department
+              ? "请选择员工"
+              : "请先选择部门",
+            disabled: !formData.asyncDemo?.department || employeeLoading,
+            hidden: "{{!formData.asyncDemo.department}}",
+            enum: employeeOptions.enum,
+            enumNames: employeeOptions.enumNames,
+          },
+          notification: {
+            title: "通知方式",
+            type: "string",
+            widget: "radio",
+            enum: ["email", "sms", "phone"],
+            enumNames: ["邮件", "短信", "电话"],
+            default: "email",
+            hidden: "{{!formData.asyncDemo.employee}}",
+          },
+        },
+      },
+      select: {
+        title: "案例4：简单异步选项",
+        type: "object",
+        description: "通过异步接口获取选项数据",
+        properties: {
+          select: {
+            title: "异步选项",
+            type: "string",
+            widget: "select",
+            enum: selectOptions.enum,
+            enumNames: selectOptions.enumNames,
+            default: selectOptions.enum[0] || "",
+            placeholder: optionsLoading ? "正在加载选项..." : "请选择",
+            disabled: optionsLoading,
+          },
+        },
+      },
       case3: {
-        title: "案例3：列表项联动",
+        title: "案例5：列表项联动",
         type: "object",
         description: "根据筛选标准动态显示不同的输入组件",
         properties: {
@@ -152,14 +349,6 @@ const AdvancedFormDemo: React.FC<AdvancedFormDemoProps> = ({
     },
   };
 
-  // 简化的表单值变化处理
-  const handleValuesChange = (
-    changedValues: unknown,
-    allValues: FormData
-  ): void => {
-    setFormData(allValues);
-  };
-
   // 提交表单
   const handleSubmit = async (): Promise<void> => {
     try {
@@ -184,6 +373,8 @@ const AdvancedFormDemo: React.FC<AdvancedFormDemoProps> = ({
 
   const handlePreview = (): void => {
     setPreviewVisible(true);
+    const values = form.getValues();
+    setFormData(values);
   };
 
   return (
