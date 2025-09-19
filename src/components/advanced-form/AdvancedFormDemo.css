@@ -1,0 +1,77 @@
+.advanced-form-demo {
+  padding: 20px;
+  margin-top: 20px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.advanced-form-demo .ant-card-head-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* 表单分组样式 */
+.advanced-form-demo .fr-form .fr-object {
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+  background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.advanced-form-demo .fr-form .fr-object > .fr-field-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #1890ff;
+  border-bottom: 2px solid #1890ff;
+  padding-bottom: 8px;
+}
+
+/* 数组项样式 */
+.advanced-form-demo .fr-form .fr-array-item {
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: #fafafa;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.advanced-form-demo .fr-form .fr-array-item:hover {
+  border-color: #1890ff;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+}
+
+/* 按钮样式 */
+.advanced-form-demo .fr-form .fr-btn-add {
+  border: 2px dashed #1890ff;
+  color: #1890ff;
+  background: transparent;
+  border-radius: 6px;
+  height: 40px;
+  font-weight: 500;
+}
+
+.advanced-form-demo .fr-form .fr-btn-add:hover {
+  border-color: #40a9ff;
+  color: #40a9ff;
+  background: rgba(24, 144, 255, 0.05);
+}
+
+/* 异步加载状态 */
+.advanced-form-demo .ant-select-loading {
+  color: #1890ff;
+}
+
+/* 响应式布局 */
+@media (max-width: 768px) {
+  .advanced-form-demo {
+    padding: 10px;
+  }
+
+  .advanced-form-demo .fr-form .fr-object {
+    padding: 12px;
+  }
+}

@@ -1,0 +1,33 @@
+.copy-text-container {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.5;
+}
+
+.copy-text {
+  word-break: break-all;
+}
+
+/* 自定义 Typography.Text 复制图标样式 */
+.copy-text-container .ant-typography-copy {
+  margin-left: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.copy-text-container:hover .ant-typography-copy {
+  opacity: 1;
+}
+
+/* 双行展示容器样式 */
+.dual-field-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dual-field-row {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+}
