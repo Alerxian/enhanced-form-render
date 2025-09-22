@@ -19,7 +19,7 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 在发送请求之前做些什么
-    console.log("发送请求:", config);
+    // console.log("发送请求:", config);
 
     // 可以在这里添加 token
     const token = localStorage.getItem("token");
@@ -40,7 +40,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     // 2xx 范围内的状态码都会触发该函数
-    console.log("响应数据:", response);
+    // console.log("响应数据:", response);
 
     // 可以在这里统一处理响应数据格式
     return response.data;

@@ -81,44 +81,10 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
               url: "/cities",
               method: "GET",
               params: {
-                regionId: "{{formData.basicInfo.region}}",
+                regionId: "basicInfo.region",
               },
-              dependencies: ["region"],
+              dependencies: ["basicInfo.region"],
               cacheTime: 10 * 60 * 1000,
-              // transform: (_data) => {
-              //   // // 模拟根据地区返回不同的城市
-              //   // const citiesByRegion: Record<
-              //   //   string,
-              //   //   Array<{ id: string; name: string }>
-              //   // > = {
-              //   //   beijing: [
-              //   //     { id: "chaoyang", name: "朝阳区" },
-              //   //     { id: "haidian", name: "海淀区" },
-              //   //     { id: "dongcheng", name: "东城区" },
-              //   //   ],
-              //   //   shanghai: [
-              //   //     { id: "pudong", name: "浦东新区" },
-              //   //     { id: "huangpu", name: "黄浦区" },
-              //   //     { id: "xuhui", name: "徐汇区" },
-              //   //   ],
-              //   //   guangzhou: [
-              //   //     { id: "tianhe", name: "天河区" },
-              //   //     { id: "yuexiu", name: "越秀区" },
-              //   //     { id: "haizhu", name: "海珠区" },
-              //   //   ],
-              //   //   shenzhen: [
-              //   //     { id: "nanshan", name: "南山区" },
-              //   //     { id: "futian", name: "福田区" },
-              //   //     { id: "luohu", name: "罗湖区" },
-              //   //   ],
-              //   // };
-
-              //   // const cities = citiesByRegion["beijing"] || []; // 简化处理
-              //   // return cities.map((city) => ({
-              //   //   value: city.id,
-              //   //   label: city.name,
-              //   // }));
-              // },
             },
           },
 
@@ -162,7 +128,10 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
             asyncDataSource: {
               url: "/teams",
               method: "GET",
-              dependencies: ["department"],
+              params: {
+                departmentId: "workInfo.department",
+              },
+              dependencies: ["workInfo.department"],
               cacheTime: 5 * 60 * 1000,
             },
           },
@@ -172,12 +141,18 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
             type: "string",
             widget: "select",
             placeholder: "请先选择团队",
-            disabled: "{{!formData.workInfo.team}}",
-            hidden: "{{!formData.workInfo.team}}",
+            disabled:
+              "{{!formData.workInfo.team && !formData.workInfo.department}}",
+            hidden:
+              "{{!formData.workInfo.team && !formData.workInfo.department}}",
             asyncDataSource: {
-              url: "/roles",
-              method: "POST",
-              dependencies: ["department", "team"],
+              url: "/positions",
+              method: "GET",
+              params: {
+                teamId: "workInfo.team",
+                departmentId: "workInfo.department",
+              },
+              dependencies: ["workInfo.department", "workInfo.team"],
               cacheTime: 2 * 60 * 1000,
             },
           },

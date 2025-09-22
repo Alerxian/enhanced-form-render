@@ -197,11 +197,8 @@ export class AsyncDataManager {
       } else {
         config.data = allParams;
       }
-      console.log("请求参数", allParams, config);
       // 发起请求
       const response = await apiClient(config);
-
-      console.log("响应数据", response.data);
 
       // 数据转换
       const transform =

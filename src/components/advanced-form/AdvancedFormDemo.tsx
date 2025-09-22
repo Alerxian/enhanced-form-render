@@ -397,6 +397,11 @@ const AdvancedFormDemo: React.FC<AdvancedFormDemoProps> = ({
           onValuesChange={handleValuesChange}
           displayType="row"
           labelWidth={120}
+          watch={{
+            "case1.showMore": (value) => {
+              console.log(value, "case1.showMore");
+            },
+          }}
         />
       </Card>
 

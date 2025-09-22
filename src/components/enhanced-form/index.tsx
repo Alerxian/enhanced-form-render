@@ -126,7 +126,6 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
     collectAsyncFields(schema);
     return fields;
   }, [schema]);
-  console.log(asyncFields, "asyncFields");
 
   // 异步数据获取函数
   const fetchAsyncData = useCallback(
@@ -223,7 +222,6 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
     if (!isInitialized) return;
 
     const formData = form.getValues();
-    console.log(formData, "formData - initial check");
 
     asyncFields.forEach(({ path, config }) => {
       if (config.asyncDataSource?.dependencies) {
@@ -293,67 +291,73 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
   const watchConfig = useMemo(() => {
     const watch: Record<string, (...args: unknown[]) => void> = {
       // 全局监听，等同于 onValuesChange
-      "#": (allValues: unknown, changedValues: unknown) => {
-        console.log("表单全局变化:", { allValues, changedValues });
-        onValuesChange?.(allValues as Record<string, unknown>);
-      },
+      // "#": (allValues: unknown, changedValues: unknown) => {
+      //   console.log("表单全局变化:", { allValues, changedValues });
+      //   onValuesChange?.(allValues as Record<string, unknown>);
+      // },
     };
 
     // 为每个有依赖的异步字段添加监听
     asyncFields.forEach(({ config }) => {
       if (config.asyncDataSource?.dependencies) {
-        config.asyncDataSource.dependencies.forEach((dep) => {
+        const dependencies = config.asyncDataSource.dependencies;
+        dependencies.forEach((dep) => {
+          if (watch[dep]) return;
           // 避免重复添加监听
-          if (!watch[dep]) {
-            watch[dep] = (value: unknown) => {
-              console.log(`字段 ${dep} 变化:`, value);
+          watch[dep] = (value: unknown) => {
+            console.log(`字段 ${dep} 变化:`, value);
 
-              // 检查所有依赖该字段的异步字段
-              asyncFields.forEach(
-                ({ path: targetPath, config: targetConfig }) => {
+            // 检查所有依赖该字段的异步字段
+            asyncFields.forEach(
+              ({ path: targetPath, config: targetConfig }) => {
+                const asyncDataSource = targetConfig.asyncDataSource;
+                if (!asyncDataSource) return;
+
+                const { dependencies: deps, params } = asyncDataSource;
+                if (!deps?.includes(dep)) return;
+
+                // 获取所有依赖字段的当前值
+                let contextParams: Record<string, unknown> = {};
+                let hasDependencyValue = false;
+
+                deps.forEach((dependency) => {
+                  const depValue = form.getValueByPath(dependency);
+                  const p = Object.fromEntries(
+                    Object.entries(params || {}).map(([key, path]) => {
+                      return [key, form.getValueByPath(path)];
+                    })
+                  );
+
+                  // console.log(p, "params");
+                  contextParams = { ...contextParams, ...p };
                   if (
-                    targetConfig.asyncDataSource?.dependencies?.includes(dep)
+                    depValue !== undefined &&
+                    depValue !== null &&
+                    depValue !== ""
                   ) {
-                    // 获取所有依赖字段的当前值
-                    const formData = form.getValues();
-                    const contextParams: Record<string, unknown> = {};
-                    let hasDependencyValue = false;
-
-                    targetConfig.asyncDataSource.dependencies.forEach(
-                      (dependency) => {
-                        const depValue = formData[dependency];
-                        contextParams[dependency] = depValue;
-                        if (
-                          depValue !== undefined &&
-                          depValue !== null &&
-                          depValue !== ""
-                        ) {
-                          hasDependencyValue = true;
-                        }
-                      }
-                    );
-
-                    // 根据依赖字段的值决定是否获取数据
-                    if (hasDependencyValue) {
-                      fetchAsyncData(targetPath, targetConfig, contextParams);
-                    } else {
-                      // 清空数据和字段值
-                      setAsyncDataResults((prev) => ({
-                        ...prev,
-                        [targetPath]: {
-                          data: [],
-                          loading: false,
-                          error: "",
-                        },
-                      }));
-                      // 清空目标字段的值
-                      form.setValues({ [targetPath]: undefined });
-                    }
+                    hasDependencyValue = true;
                   }
+                });
+
+                // 根据依赖字段的值决定是否获取数据
+                if (hasDependencyValue) {
+                  fetchAsyncData(targetPath, targetConfig, contextParams);
+                } else {
+                  // 清空数据和字段值
+                  setAsyncDataResults((prev) => ({
+                    ...prev,
+                    [targetPath]: {
+                      data: [],
+                      loading: false,
+                      error: "",
+                    },
+                  }));
+                  // 清空目标字段的值
+                  form.setValues({ [targetPath]: undefined });
                 }
-              );
-            };
-          }
+              }
+            );
+          };
         });
       }
     });
@@ -374,6 +378,11 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
       schema={enhancedSchema}
       form={form}
       watch={watchConfig}
+      // watch={{
+      //   basicInfo: (value) => {
+      //     console.log("basicInfo.name:", value);
+      //   },
+      // }}
       onFinish={handleFinish}
       displayType={displayType}
       labelWidth={labelWidth}
