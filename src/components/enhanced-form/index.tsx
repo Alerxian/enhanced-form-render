@@ -1,23 +1,16 @@
 import React, { useMemo, useCallback, useEffect, useState } from "react";
 import FormRender, { useForm } from "form-render";
-import type { Schema } from "form-render";
+import type { FRProps, Schema, WatchProperties } from "form-render";
 import { asyncDataManager } from "../../utils/AsyncDataManager";
 import type {
   EnhancedSchema,
   EnhancedFieldSchema,
   SelectOption,
 } from "../../types/schema";
+import { genAsyncFields } from "./utils";
 
-interface EnhancedFormRenderProps {
+interface EnhancedFormRenderProps extends FRProps {
   schema: EnhancedSchema;
-  // formData?: Record<string, unknown>;
-  onValuesChange?: (values: Record<string, unknown>) => void;
-  onFinish?: (values: Record<string, unknown>) => void;
-  form?: ReturnType<typeof useForm>;
-  displayType?: "row" | "column";
-  labelWidth?: number;
-  disabled?: boolean;
-  readOnly?: boolean;
 }
 
 /**
@@ -27,14 +20,10 @@ interface EnhancedFormRenderProps {
  */
 const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
   schema,
-  // formData = {},
-  onValuesChange,
-  onFinish,
   form: externalForm,
   displayType = "row",
   labelWidth = 120,
-  disabled = false,
-  readOnly = false,
+  ...props
 }) => {
   const internalForm = useForm();
   const form = externalForm || internalForm;
@@ -50,81 +39,10 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
       }
     >
   >({});
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // 递归处理schema，为有异步数据源的字段添加数据
-  const processSchema = useCallback(
-    (schemaNode: EnhancedSchema | EnhancedFieldSchema, _path = ""): Schema => {
-      if ("properties" in schemaNode) {
-        // 处理对象类型的schema
-        const processedProperties: Record<string, Schema> = {};
-
-        Object.entries(schemaNode.properties).forEach(([key, value]) => {
-          const currentPath = _path ? `${_path}.${key}` : key;
-          processedProperties[key] = processSchema(value, currentPath);
-        });
-
-        return {
-          type: schemaNode.type,
-          title: schemaNode.title,
-          description: schemaNode.description,
-          properties: processedProperties,
-        };
-      } else {
-        // 处理字段类型的schema
-        const fieldSchema = schemaNode as EnhancedFieldSchema;
-        const processedField: Schema = {
-          title: fieldSchema.title,
-          type: fieldSchema.type,
-          widget: fieldSchema.widget,
-          placeholder: fieldSchema.placeholder,
-          default: fieldSchema.default,
-          required: fieldSchema.required,
-          hidden: fieldSchema.hidden,
-          disabled: fieldSchema.disabled,
-        };
-
-        // 如果有静态选项，直接使用
-        if (fieldSchema.enum && fieldSchema.enumNames) {
-          processedField.enum = fieldSchema.enum;
-          processedField.enumNames = fieldSchema.enumNames;
-        }
-
-        return processedField;
-      }
-    },
-    []
-  );
 
   // 收集所有需要异步数据的字段
-  const asyncFields = useMemo(() => {
-    const fields: Array<{
-      path: string;
-      config: EnhancedFieldSchema;
-    }> = [];
-
-    const collectAsyncFields = (
-      schemaNode: EnhancedSchema | EnhancedFieldSchema,
-      path = ""
-    ): void => {
-      if ("properties" in schemaNode) {
-        Object.entries(schemaNode.properties).forEach(([key, value]) => {
-          const currentPath = path ? `${path}.${key}` : key;
-          collectAsyncFields(value, currentPath);
-        });
-      } else {
-        const fieldSchema = schemaNode as EnhancedFieldSchema;
-        if (fieldSchema.asyncDataSource) {
-          fields.push({
-            path,
-            config: fieldSchema,
-          });
-        }
-      }
-    };
-
-    collectAsyncFields(schema);
-    return fields;
+  const [asyncFields, dependencyMap] = useMemo(() => {
+    return genAsyncFields(schema);
   }, [schema]);
 
   // 异步数据获取函数
@@ -202,48 +120,15 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
 
       // 获取无依赖字段的数据
       for (const { path, config } of asyncFields) {
-        if (
-          config.asyncDataSource &&
-          (!config.asyncDataSource.dependencies ||
-            config.asyncDataSource.dependencies.length === 0)
-        ) {
-          await fetchAsyncData(path, config, {});
+        const { dependencies, params } = config.asyncDataSource || {};
+        if (!dependencies || dependencies.length === 0) {
+          await fetchAsyncData(path, config, params || {});
         }
       }
-
-      setIsInitialized(true);
     };
 
     initializeAsyncData();
   }, [asyncFields, fetchAsyncData]);
-
-  // 监听表单数据变化，更新依赖字段（仅用于初始化时的检查）
-  useEffect(() => {
-    if (!isInitialized) return;
-
-    const formData = form.getValues();
-
-    asyncFields.forEach(({ path, config }) => {
-      if (config.asyncDataSource?.dependencies) {
-        // 获取依赖字段的值
-        const contextParams: Record<string, unknown> = {};
-        let hasDependencyValue = false;
-
-        config.asyncDataSource.dependencies.forEach((dep) => {
-          const value = formData[dep];
-          contextParams[dep] = value;
-          if (value !== undefined && value !== null && value !== "") {
-            hasDependencyValue = true;
-          }
-        });
-
-        // 只有当依赖字段有值时才获取数据
-        if (hasDependencyValue) {
-          fetchAsyncData(path, config, contextParams);
-        }
-      }
-    });
-  }, [asyncFields, fetchAsyncData, isInitialized, form]);
 
   // 动态更新schema，注入异步数据
   const enhancedSchema = useMemo(() => {
@@ -276,118 +161,131 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
             placeholder: asyncResult.loading
               ? "正在加载选项..."
               : asyncResult.error || schemaNode.placeholder,
-            disabled: asyncResult.loading || disabled,
+            disabled: asyncResult.loading || props.disabled,
           };
         }
         return schemaNode;
       }
     };
+    return updateSchemaWithAsyncData(schema);
+  }, [schema, asyncDataResults, props.disabled]);
 
-    const baseSchema = processSchema(schema);
-    return updateSchemaWithAsyncData(baseSchema);
-  }, [schema, asyncDataResults, disabled, processSchema]);
+  // 处理依赖字段变化的统一函数
+  const handleDependencyChange = useCallback(
+    (fieldName: string, value: unknown) => {
+      const dependentFields = dependencyMap.get(fieldName);
+      if (!dependentFields) return;
+
+      console.log(`字段 ${fieldName} 变化:`, value);
+
+      dependentFields.forEach(({ path: targetPath, config: targetConfig }) => {
+        const { dependencies: deps, params } = targetConfig.asyncDataSource!;
+
+        // 获取所有依赖字段的当前值
+        let contextParams: Record<string, unknown> = {};
+        let hasDependencyValue = false;
+
+        deps!.forEach((dependency) => {
+          const depValue = form.getValueByPath(dependency);
+          if (depValue !== undefined && depValue !== null && depValue !== "") {
+            hasDependencyValue = true;
+          }
+        });
+
+        // 处理params参数
+        if (params) {
+          const paramsValues = Object.fromEntries(
+            Object.entries(params).map(([key, path]) => [
+              key,
+              form.getValueByPath(path),
+            ])
+          );
+          contextParams = { ...contextParams, ...paramsValues };
+        }
+
+        // 根据依赖字段的值决定是否获取数据
+        if (hasDependencyValue) {
+          fetchAsyncData(targetPath, targetConfig, contextParams);
+        } else {
+          // 清空数据和字段值
+          setAsyncDataResults((prev) => ({
+            ...prev,
+            [targetPath]: {
+              data: [],
+              loading: false,
+              error: "",
+            },
+          }));
+          // 清空目标字段的值
+          form.setValues({ [targetPath]: undefined });
+        }
+      });
+    },
+    [dependencyMap, fetchAsyncData]
+  );
 
   // 构建 watch 监听配置
   const watchConfig = useMemo(() => {
-    const watch: Record<string, (...args: unknown[]) => void> = {
-      // 全局监听，等同于 onValuesChange
-      // "#": (allValues: unknown, changedValues: unknown) => {
-      //   console.log("表单全局变化:", { allValues, changedValues });
-      //   onValuesChange?.(allValues as Record<string, unknown>);
-      // },
-    };
+    const watch: WatchProperties = {};
 
-    // 为每个有依赖的异步字段添加监听
-    asyncFields.forEach(({ config }) => {
-      if (config.asyncDataSource?.dependencies) {
-        const dependencies = config.asyncDataSource.dependencies;
-        dependencies.forEach((dep) => {
-          if (watch[dep]) return;
-          // 避免重复添加监听
-          watch[dep] = (value: unknown) => {
-            console.log(`字段 ${dep} 变化:`, value);
-
-            // 检查所有依赖该字段的异步字段
-            asyncFields.forEach(
-              ({ path: targetPath, config: targetConfig }) => {
-                const asyncDataSource = targetConfig.asyncDataSource;
-                if (!asyncDataSource) return;
-
-                const { dependencies: deps, params } = asyncDataSource;
-                if (!deps?.includes(dep)) return;
-
-                // 获取所有依赖字段的当前值
-                let contextParams: Record<string, unknown> = {};
-                let hasDependencyValue = false;
-
-                deps.forEach((dependency) => {
-                  const depValue = form.getValueByPath(dependency);
-                  const p = Object.fromEntries(
-                    Object.entries(params || {}).map(([key, path]) => {
-                      return [key, form.getValueByPath(path)];
-                    })
-                  );
-
-                  // console.log(p, "params");
-                  contextParams = { ...contextParams, ...p };
-                  if (
-                    depValue !== undefined &&
-                    depValue !== null &&
-                    depValue !== ""
-                  ) {
-                    hasDependencyValue = true;
-                  }
-                });
-
-                // 根据依赖字段的值决定是否获取数据
-                if (hasDependencyValue) {
-                  fetchAsyncData(targetPath, targetConfig, contextParams);
-                } else {
-                  // 清空数据和字段值
-                  setAsyncDataResults((prev) => ({
-                    ...prev,
-                    [targetPath]: {
-                      data: [],
-                      loading: false,
-                      error: "",
-                    },
-                  }));
-                  // 清空目标字段的值
-                  form.setValues({ [targetPath]: undefined });
-                }
-              }
-            );
-          };
-        });
-      }
+    // 为所有有依赖的字段添加监听器
+    dependencyMap.forEach((_, fieldName) => {
+      watch[fieldName] = (value: unknown) => {
+        handleDependencyChange(fieldName, value);
+      };
     });
 
-    return watch;
-  }, [asyncFields, fetchAsyncData, form, onValuesChange]);
+    JSON.stringify(
+      {
+        fn: () => {
+          return 1;
+        },
+        a: 1,
+      },
+      (key, value) => {
+        if (typeof value === "function") {
+          value = value.toString();
+        }
+        return value;
+      },
+      2
+    );
+    // 合并外部传入的watch配置，外部配置优先级更高
+    if (props.watch) {
+      Object.entries(props.watch).forEach(([fieldName, handler]) => {
+        const originalHandler = watch[fieldName];
+        if (originalHandler) {
+          // 如果内部已有监听器，则组合调用
+          watch[fieldName] = (value: unknown) => {
+            // 先调用内部逻辑
+            if (typeof originalHandler === "function") {
+              originalHandler(value);
+            }
+            // 再调用外部逻辑
+            if (typeof handler === "function") {
+              handler(value);
+            } else if (typeof handler === "object" && handler.handler) {
+              handler.handler(value);
+            }
+          };
+        } else {
+          // 如果内部没有监听器，直接使用外部监听器
+          watch[fieldName] = handler;
+        }
+      });
+    }
 
-  // 处理表单提交
-  const handleFinish = useCallback(
-    (values: Record<string, unknown>) => {
-      onFinish?.(values);
-    },
-    [onFinish]
-  );
+    return watch;
+  }, [dependencyMap, handleDependencyChange, props.watch]);
 
   return (
     <FormRender
+      {...props}
       schema={enhancedSchema}
       form={form}
       watch={watchConfig}
-      // watch={{
-      //   basicInfo: (value) => {
-      //     console.log("basicInfo.name:", value);
-      //   },
-      // }}
-      onFinish={handleFinish}
       displayType={displayType}
       labelWidth={labelWidth}
-      disabled={disabled}
-      readOnly={readOnly}
     />
   );
 };

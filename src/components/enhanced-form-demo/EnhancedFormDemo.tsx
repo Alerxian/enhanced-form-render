@@ -50,20 +50,6 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
               url: "/regions",
               method: "GET",
               cacheTime: 30 * 60 * 1000,
-              // transform: (_data) => {
-              //   console.log(_data, "data");
-              //   return [];
-              //   // const regions = [
-              //   //   { id: "beijing", name: "北京市" },
-              //   //   { id: "shanghai", name: "上海市" },
-              //   //   { id: "guangzhou", name: "广州市" },
-              //   //   { id: "shenzhen", name: "深圳市" },
-              //   // ];
-              //   // return regions.map((region) => ({
-              //   //   value: region.id,
-              //   //   label: region.name,
-              //   // }));
-              // },
             },
             // 静态选项作为降级方案
             enum: ["beijing", "shanghai"],
@@ -82,9 +68,12 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
               method: "GET",
               params: {
                 regionId: "basicInfo.region",
+                token: "token",
+                text: 1,
               },
               dependencies: ["basicInfo.region"],
               cacheTime: 10 * 60 * 1000,
+              map: (data) => {},
             },
           },
 
@@ -141,8 +130,7 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
             type: "string",
             widget: "select",
             placeholder: "请先选择团队",
-            disabled:
-              "{{!formData.workInfo.team && !formData.workInfo.department}}",
+            // dependencies: ["workInfo.department", "workInfo.team"],
             hidden:
               "{{!formData.workInfo.team && !formData.workInfo.department}}",
             asyncDataSource: {
@@ -152,7 +140,6 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
                 teamId: "workInfo.team",
                 departmentId: "workInfo.department",
               },
-              dependencies: ["workInfo.department", "workInfo.team"],
               cacheTime: 2 * 60 * 1000,
             },
           },
@@ -167,12 +154,6 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
         },
       },
     },
-  };
-
-  // 处理表单值变化
-  const handleValuesChange = (values: Record<string, unknown>): void => {
-    setFormData(values);
-    console.log("表单数据变化:", values);
   };
 
   // 提交表单
@@ -253,14 +234,7 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
           </ul>
         </div>
 
-        <EnhancedFormRender
-          schema={enhancedSchema}
-          // formData={formData}
-          onValuesChange={handleValuesChange}
-          form={form}
-          displayType="row"
-          labelWidth={120}
-        />
+        <EnhancedFormRender schema={enhancedSchema} form={form} />
       </Card>
 
       <Modal
