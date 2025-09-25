@@ -221,7 +221,7 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
         }
       });
     },
-    [dependencyMap, fetchAsyncData]
+    [dependencyMap, fetchAsyncData, form]
   );
 
   // 构建 watch 监听配置

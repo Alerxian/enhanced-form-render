@@ -63,6 +63,7 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
             placeholder: "请先选择地区",
             disabled: "{{!formData.basicInfo.region}}",
             hidden: "{{!formData.basicInfo.region}}",
+
             asyncDataSource: {
               url: "/cities",
               method: "GET",
@@ -73,7 +74,11 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
               },
               dependencies: ["basicInfo.region"],
               cacheTime: 10 * 60 * 1000,
-              map: (data) => {},
+              transform: (res: { name: string; id: string }[]) =>
+                res.map((item) => ({
+                  label: item.name,
+                  value: item.id,
+                })),
             },
           },
 
@@ -91,6 +96,7 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
         title: "工作信息",
         type: "object",
         description: "职场相关信息配置",
+
         properties: {
           department: {
             title: "所属部门",
@@ -103,8 +109,6 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
               method: "GET",
               cacheTime: 15 * 60 * 1000,
             },
-            enum: ["tech", "product"],
-            enumNames: ["技术部", "产品部"],
           },
 
           team: {
@@ -122,6 +126,12 @@ const EnhancedFormDemo: React.FC<EnhancedFormDemoProps> = ({
               },
               dependencies: ["workInfo.department"],
               cacheTime: 5 * 60 * 1000,
+              transform(data: { name: string; id: string }[]) {
+                return data.map((item) => ({
+                  label: item.name,
+                  value: item.id,
+                }));
+              },
             },
           },
 

@@ -1,4 +1,5 @@
-import type { Schema, SchemaBase } from "form-render";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { SchemaBase } from "form-render";
 
 // 统一的异步数据源配置类型定义
 export interface AsyncDataSource {
@@ -11,11 +12,11 @@ export interface AsyncDataSource {
   // 请求头
   headers?: Record<string, string>;
   // 数据转换函数
-  transform?: (data: unknown) => SelectOption[];
+  transform?: (data: any) => SelectOption[];
   // 缓存时间（毫秒）
   cacheTime?: number;
   // 依赖字段，当这些字段变化时重新请求
-  deps?: string[];
+  dependencies?: string[];
   /** 是否可以开始请求 */
   ready?: boolean;
 }
@@ -31,17 +32,21 @@ export interface SelectOption {
 export interface EnhancedFieldSchema extends SchemaBase {
   // 异步数据源配置
   asyncDataSource?: AsyncDataSource;
+  properties?: Record<string, EnhancedFieldSchema>;
+  /** 提交按钮配置 */
+  api?: {
+    method: "POST";
+    url: string;
+    transform?: (data: any) => any;
+  };
+  globalAsyncOptions?: {
+    cacheTime?: number;
+  };
 }
 
 // 扩展的Schema配置
-export interface EnhancedSchema extends Schema {
-  type: string;
-  title?: string;
-  description?: string;
-  properties: Record<string, EnhancedFieldSchema | EnhancedSchema>;
-
-  // 全局异步数据源配置
-  // globalDataSources?: Record<string, AsyncDataSource>;
+export interface EnhancedSchema extends SchemaBase {
+  properties: Record<string, EnhancedFieldSchema>;
 }
 
 // 异步数据缓存项
