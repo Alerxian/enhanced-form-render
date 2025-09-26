@@ -52,13 +52,10 @@ export interface EnhancedFieldSchema extends SchemaBase {
   asyncDataSource?: AsyncDataSource;
   properties?: Record<string, EnhancedFieldSchema>;
   /** 提交按钮配置 */
-  api?: {
+  submitConfig?: {
     method: "POST";
     url: string;
     transform?: (data: any) => any;
-  };
-  globalAsyncOptions?: {
-    cacheTime?: number;
   };
 }
 

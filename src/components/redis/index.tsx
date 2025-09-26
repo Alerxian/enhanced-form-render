@@ -72,10 +72,8 @@ export const RedisTpl = () => {
         },
         asyncDataSource: {
           url: "/api/redis/service-units",
-          method: "GET",
-          // dependencies: ["systemCode", "envType"],
           params: {
-            systemCode: "{systemCode}",
+            systemCode: "{systemCode}", // {}表示获取字段值，form.getValues
             envType: "{envType}",
           },
           transform: (
@@ -86,7 +84,6 @@ export const RedisTpl = () => {
               value: item.id,
             }));
           },
-          cacheTime: 300000, // 5分钟缓存
         },
       },
       ...renderTitle("选择模板"),
@@ -96,14 +93,6 @@ export const RedisTpl = () => {
         widget: "select",
         asyncDataSource: {
           url: "/api/redis/resource-templates",
-          method: "GET",
-          transform: (data: { id: string; name: string }[]) => {
-            return data.map((item) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          },
-          cacheTime: 600000, // 10分钟缓存
         },
       },
       ...renderTitle("区域"),
@@ -114,17 +103,9 @@ export const RedisTpl = () => {
         required: true,
         asyncDataSource: {
           url: "/api/redis/zones",
-          method: "GET",
-          transform: (data: { id: string; name: string }[]) => {
-            return data.map((item) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          },
-          cacheTime: 300000,
           defaultValue: {
             selector: {
-              byIndex: 0, // 如果没有enterprise则选择第一个
+              byIndex: 0,
             },
           },
         },
@@ -137,21 +118,13 @@ export const RedisTpl = () => {
         required: true,
         asyncDataSource: {
           url: "/api/redis/series",
-          method: "GET",
-          transform: (data: { id: string; name: string }[]) => {
-            return data.map((item) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          },
-          cacheTime: 600000,
           // 数据加载完成后自动设置默认值
           defaultValue: {
             selector: {
               byValue: "enterprise", // 优先选择enterprise
               byIndex: 0, // 如果没有enterprise则选择第一个
             },
-            triggerDependencies: true, // 设置值后触发依赖字段更新
+            triggerDependencies: true, // 设置值后触发依赖字段更新,默认触发watch
           },
         },
       },
@@ -163,18 +136,11 @@ export const RedisTpl = () => {
         required: true,
         asyncDataSource: {
           url: "/api/redis/cpu-types",
-          method: "GET",
           dependencies: ["series"],
           params: {
             series: "{series}",
           },
-          transform: (data: { id: string; name: string }[]) => {
-            return data.map((item) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          },
-          cacheTime: 300000,
+
           defaultValue: {
             selector: {
               byIndex: 0, // 如果没有enterprise则选择第一个
@@ -193,16 +159,10 @@ export const RedisTpl = () => {
           params: {
             stable: "true",
           },
-          transform: (data: { id: string; name: string }[]) => {
-            return data.map((item) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          },
-          cacheTime: 600000,
+
           defaultValue: {
             selector: {
-              byIndex: 0, // 如果没有enterprise则选择第一个
+              byIndex: 0,
             },
           },
         },
@@ -214,14 +174,7 @@ export const RedisTpl = () => {
         required: true,
         asyncDataSource: {
           url: "/api/redis/architectures",
-          method: "GET",
-          transform: (data: { id: string; name: string }[]) => {
-            return data.map((item) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          },
-          cacheTime: 600000,
+
           defaultValue: {
             selector: {
               byIndex: 0, // 如果没有enterprise则选择第一个
@@ -237,21 +190,13 @@ export const RedisTpl = () => {
         dependencies: ["architecture"],
         asyncDataSource: {
           url: "/api/redis/node-types",
-          method: "GET",
           dependencies: ["architecture"],
           params: {
             architecture: "{architecture}",
           },
-          transform: (data: { id: string; name: string }[]) => {
-            return data.map((item) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          },
-          cacheTime: 300000,
           defaultValue: {
             selector: {
-              byIndex: 0, // 如果没有enterprise则选择第一个
+              byIndex: 0,
             },
           },
         },
@@ -263,7 +208,6 @@ export const RedisTpl = () => {
         required: true,
         asyncDataSource: {
           url: "/api/redis/instances",
-          method: "GET",
           params: {
             series: "{series}",
             cpuType: "{cpuType}",
@@ -272,14 +216,6 @@ export const RedisTpl = () => {
             nodeType: "{nodeType}",
             id: 11,
           },
-          transform: (data: { id: string; name: string }[]) => {
-            console.log(data, "data");
-            return data.map((item) => ({
-              label: item.name,
-              value: item.id,
-            }));
-          },
-          cacheTime: 300000,
           dependencies: [
             "series",
             "cpuType",

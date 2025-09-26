@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback, useEffect, useState } from "react";
 import FormRender, { useForm } from "form-render";
 import type { FRProps, WatchProperties } from "form-render";
-import { asyncDataManager } from "../../utils/AsyncDataManager";
+import { asyncDataManager } from "./AsyncDataManager";
 import type {
   EnhancedSchema,
   EnhancedFieldSchema,

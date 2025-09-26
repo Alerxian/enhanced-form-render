@@ -5,8 +5,8 @@ import type {
   SelectOption,
   CacheItem,
   AsyncDataState,
-} from "../types/schema";
-import apiClient from "../api/axios";
+} from "../../types/schema";
+import apiClient from "../../api/axios";
 
 /**
  * 异步数据管理器
