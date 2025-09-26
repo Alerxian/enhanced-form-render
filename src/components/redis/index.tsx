@@ -1,11 +1,8 @@
-import FormRender, {
-  useForm,
-  type Schema,
-  type WatchProperties,
-  type WidgetProps,
-} from "form-render";
+import { useForm } from "form-render";
 import { useEffect } from "react";
-import { fetchServiceUnitOptions } from "../../api/serviceUnits";
+import { type EnhancedSchema } from "../../types/schema";
+import EnhancedFormRender from "../enhanced-form";
+import type { WidgetProps } from "form-render";
 
 // 表单数据接口
 interface FormData {
@@ -13,10 +10,17 @@ interface FormData {
   systemCode: string;
   envType: string;
   serviceUnitIds?: string[];
+  resourceTpl?: string;
+  zoneId?: string;
+  series?: string;
+  cpuType?: string;
+  engineVersion?: string;
+  architecture?: string;
+  nodeType?: string;
+  instance?: string;
 }
 
 const FormTitle = (props: WidgetProps) => {
-  // console.log(props);
   return (
     <h3 style={{ width: "190px", textAlign: "right", margin: 0 }}>
       {props.title}
@@ -37,7 +41,7 @@ const renderTitle = (title: string) => ({
 export const RedisTpl = () => {
   const form = useForm();
 
-  const schema: Schema = {
+  const schema: EnhancedSchema = {
     type: "object",
     properties: {
       systemName: {
@@ -66,20 +70,64 @@ export const RedisTpl = () => {
           mode: "multiple",
           maxTagCount: 1,
         },
+        asyncDataSource: {
+          url: "/api/redis/service-units",
+          method: "GET",
+          // dependencies: ["systemCode", "envType"],
+          params: {
+            systemCode: "{systemCode}",
+            envType: "{envType}",
+          },
+          transform: (
+            data: { id: string; name: string; code: string; status: string }[]
+          ) => {
+            return data.map((item) => ({
+              label: `${item.name} (${item.code})`,
+              value: item.id,
+            }));
+          },
+          cacheTime: 300000, // 5分钟缓存
+        },
       },
       ...renderTitle("选择模板"),
       resourceTpl: {
         title: "资源模板",
         type: "string",
         widget: "select",
+        asyncDataSource: {
+          url: "/api/redis/resource-templates",
+          method: "GET",
+          transform: (data: { id: string; name: string }[]) => {
+            return data.map((item) => ({
+              label: item.name,
+              value: item.id,
+            }));
+          },
+          cacheTime: 600000, // 10分钟缓存
+        },
       },
       ...renderTitle("区域"),
-
       zoneId: {
         type: "string",
         widget: "select",
         title: "可用区",
         required: true,
+        asyncDataSource: {
+          url: "/api/redis/zones",
+          method: "GET",
+          transform: (data: { id: string; name: string }[]) => {
+            return data.map((item) => ({
+              label: item.name,
+              value: item.id,
+            }));
+          },
+          cacheTime: 300000,
+          defaultValue: {
+            selector: {
+              byIndex: 0, // 如果没有enterprise则选择第一个
+            },
+          },
+        },
       },
       ...renderTitle("规格"),
       series: {
@@ -87,6 +135,25 @@ export const RedisTpl = () => {
         widget: "radio",
         title: "版本类型",
         required: true,
+        asyncDataSource: {
+          url: "/api/redis/series",
+          method: "GET",
+          transform: (data: { id: string; name: string }[]) => {
+            return data.map((item) => ({
+              label: item.name,
+              value: item.id,
+            }));
+          },
+          cacheTime: 600000,
+          // 数据加载完成后自动设置默认值
+          defaultValue: {
+            selector: {
+              byValue: "enterprise", // 优先选择enterprise
+              byIndex: 0, // 如果没有enterprise则选择第一个
+            },
+            triggerDependencies: true, // 设置值后触发依赖字段更新
+          },
+        },
       },
       cpuType: {
         type: "string",
@@ -94,136 +161,171 @@ export const RedisTpl = () => {
         title: "芯片架构",
         dependencies: ["series"],
         required: true,
+        asyncDataSource: {
+          url: "/api/redis/cpu-types",
+          method: "GET",
+          dependencies: ["series"],
+          params: {
+            series: "{series}",
+          },
+          transform: (data: { id: string; name: string }[]) => {
+            return data.map((item) => ({
+              label: item.name,
+              value: item.id,
+            }));
+          },
+          cacheTime: 300000,
+          defaultValue: {
+            selector: {
+              byIndex: 0, // 如果没有enterprise则选择第一个
+            },
+          },
+        },
       },
       engineVersion: {
         type: "string",
         widget: "radio",
         title: "引擎版本",
         required: true,
+        asyncDataSource: {
+          url: "/api/redis/engine-versions",
+          method: "GET",
+          params: {
+            stable: "true",
+          },
+          transform: (data: { id: string; name: string }[]) => {
+            return data.map((item) => ({
+              label: item.name,
+              value: item.id,
+            }));
+          },
+          cacheTime: 600000,
+          defaultValue: {
+            selector: {
+              byIndex: 0, // 如果没有enterprise则选择第一个
+            },
+          },
+        },
       },
       architecture: {
         type: "string",
         widget: "radio",
         title: "架构类型",
         required: true,
+        asyncDataSource: {
+          url: "/api/redis/architectures",
+          method: "GET",
+          transform: (data: { id: string; name: string }[]) => {
+            return data.map((item) => ({
+              label: item.name,
+              value: item.id,
+            }));
+          },
+          cacheTime: 600000,
+          defaultValue: {
+            selector: {
+              byIndex: 0, // 如果没有enterprise则选择第一个
+            },
+          },
+        },
       },
       nodeType: {
         type: "string",
         widget: "radio",
         title: "节点类型",
         required: true,
+        dependencies: ["architecture"],
+        asyncDataSource: {
+          url: "/api/redis/node-types",
+          method: "GET",
+          dependencies: ["architecture"],
+          params: {
+            architecture: "{architecture}",
+          },
+          transform: (data: { id: string; name: string }[]) => {
+            return data.map((item) => ({
+              label: item.name,
+              value: item.id,
+            }));
+          },
+          cacheTime: 300000,
+          defaultValue: {
+            selector: {
+              byIndex: 0, // 如果没有enterprise则选择第一个
+            },
+          },
+        },
       },
       instance: {
         type: "string",
         widget: "select",
         title: "实例规格",
         required: true,
+        asyncDataSource: {
+          url: "/api/redis/instances",
+          method: "GET",
+          params: {
+            series: "{series}",
+            cpuType: "{cpuType}",
+            architecture: "{architecture}",
+            engineVersion: "{engineVersion}",
+            nodeType: "{nodeType}",
+            id: 11,
+          },
+          transform: (data: { id: string; name: string }[]) => {
+            console.log(data, "data");
+            return data.map((item) => ({
+              label: item.name,
+              value: item.id,
+            }));
+          },
+          cacheTime: 300000,
+          dependencies: [
+            "series",
+            "cpuType",
+            "architecture",
+            "engineVersion",
+            "nodeType",
+          ],
+          ready(formData) {
+            return (
+              !!formData.series &&
+              !!formData.cpuType &&
+              !!formData.architecture &&
+              !!formData.engineVersion &&
+              !!formData.nodeType
+            );
+          },
+        },
       },
     },
   };
 
   useEffect(() => {
-    const fetchService = async () => {
-      // 组件加载时获取服务单元数据
-      const data = await fetchServiceUnitOptions();
-      const seriesOptions = [{ value: "1", label: "企业版" }];
-      const cpuTypeOptions = [{ value: "1", label: "hygon" }];
-      const engineVersionOptions = [{ value: "1", label: "5.7" }];
-      const architectureOptions = [{ value: "1", label: "标准版" }];
-      const nodeTypeOptions = [{ value: "1", label: "单节点" }];
-      const instanceOptions = [
-        { value: "1", label: "1C1G" },
-        { value: "2", label: "2C2G" },
-        { value: "4", label: "4C4G" },
-      ];
-      // console.log(data);
-      form.setSchema({
-        serviceUnitIds: {
-          props: {
-            options: data,
-          },
-        },
-        zoneId: {
-          props: {
-            options: data,
-          },
-        },
-        series: {
-          props: {
-            options: seriesOptions,
-          },
-        },
-        cpuType: {
-          props: {
-            options: cpuTypeOptions,
-          },
-        },
-        engineVersion: {
-          props: {
-            options: engineVersionOptions,
-          },
-        },
-        architecture: {
-          props: {
-            options: architectureOptions,
-          },
-        },
-        nodeType: {
-          props: {
-            options: nodeTypeOptions,
-          },
-        },
-        instance: {
-          props: {
-            options: instanceOptions,
-          },
-        },
-      });
-
-      form.setValues({
-        series: seriesOptions[0].value,
-        serviceUnitIds: [data[0].value],
-      });
-    };
-
-    fetchService();
+    // 初始化表单数据
+    form.setValues({
+      systemCode: "TP114",
+      systemName: "测试系统",
+      envType: "DEV",
+    });
   }, [form]);
-
-  const watch: WatchProperties = {
-    series: (value) => {
-      console.log(value);
-    },
-  };
 
   return (
     <div style={{ display: "flex", gap: "20px" }}>
       {/* 表单区域 */}
       <div className="" style={{ width: "600px" }}>
-        <FormRender
+        <EnhancedFormRender
           form={form}
           schema={schema}
           displayType="row"
           column={1}
           labelWidth={200}
           maxWidth={800}
-          // initialValues={{
-          //   systemCode: "TP114",
-          //   systemName: "测试系统",
-          //   envType: "DEV",
-          // }}
-          onMount={() => {
-            form.setValues({
-              systemCode: "TP114",
-              systemName: "测试系统",
-              envType: "DEV",
-            });
-          }}
           onFinish={(values: FormData) => {
             console.log("表单提交数据:", values);
           }}
           footer
           widgets={{ FormTitle }}
-          watch={watch}
         />
       </div>
     </div>

@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 
 const app = express();
-const PORT = 3000;
+const PORT = 3001;
 
 // 中间件配置
 app.use(cors());
@@ -225,6 +225,148 @@ const mockData = {
       teamId: "8",
     },
   ],
+
+  // Redis相关模拟数据
+  serviceUnits: [
+    {
+      id: "auth-svc-7f8d9e2a",
+      name: "认证服务",
+      code: "AUTH_SVC",
+      status: "running",
+      systemCode: "TP114",
+      systemName: "测试系统",
+      envType: "DEV",
+      containerConfig: {
+        image: "auth-service:v2.1.3",
+        port: 8080,
+        replicas: 3,
+        cpu: "500m",
+        memory: "1Gi",
+      },
+      version: "v2.1.3",
+      lastUpdate: "2024-01-15 14:30:25",
+      description: "用户身份验证和授权服务",
+    },
+    {
+      id: "user-svc-5c6b8f1d",
+      name: "用户服务",
+      code: "USER_SVC",
+      status: "deploying",
+      systemCode: "TP114",
+      systemName: "测试系统",
+      envType: "DEV",
+      containerConfig: {
+        image: "user-service:v1.8.2",
+        port: 8081,
+        replicas: 2,
+        cpu: "300m",
+        memory: "512Mi",
+      },
+      version: "v1.8.2",
+      lastUpdate: "2024-01-15 14:25:10",
+      description: "用户信息管理和操作服务",
+    },
+    {
+      id: "gateway-9a4e3b7c",
+      name: "API网关",
+      code: "API_GATEWAY",
+      status: "running",
+      systemCode: "TP114",
+      systemName: "测试系统",
+      envType: "DEV",
+      containerConfig: {
+        image: "nginx:1.21-alpine",
+        port: 80,
+        replicas: 2,
+        cpu: "200m",
+        memory: "256Mi",
+      },
+      version: "v3.0.1",
+      lastUpdate: "2024-01-15 13:45:50",
+      description: "统一入口和路由管理",
+    },
+    {
+      id: "pay-svc-2d8f4a6e",
+      name: "支付服务",
+      code: "PAY_SVC",
+      status: "error",
+      systemCode: "TP114",
+      systemName: "测试系统",
+      envType: "DEV",
+      containerConfig: {
+        image: "payment-service:v1.5.7",
+        port: 8082,
+        replicas: 1,
+        cpu: "400m",
+        memory: "768Mi",
+      },
+      version: "v1.5.7",
+      lastUpdate: "2024-01-15 14:10:30",
+      description: "支付处理和订单管理服务",
+    },
+  ],
+
+  resourceTemplates: [
+    { id: "1", name: "基础模板", type: "basic", description: "适用于开发环境" },
+    {
+      id: "2",
+      name: "标准模板",
+      type: "standard",
+      description: "适用于测试环境",
+    },
+    {
+      id: "3",
+      name: "高性能模板",
+      type: "performance",
+      description: "适用于生产环境",
+    },
+  ],
+
+  zones: [
+    { id: "zone-1", name: "可用区A", region: "华北", status: "available" },
+    { id: "zone-2", name: "可用区B", region: "华北", status: "available" },
+    { id: "zone-3", name: "可用区C", region: "华东", status: "maintenance" },
+  ],
+
+  redisSeries: [
+    {
+      id: "enterprise",
+      name: "企业版",
+      features: ["高可用", "数据持久化", "集群模式"],
+    },
+    { id: "community", name: "社区版", features: ["基础功能", "单机模式"] },
+  ],
+
+  cpuTypes: [
+    { id: "x86", name: "x86架构", series: ["enterprise", "community"] },
+    { id: "arm", name: "ARM架构", series: ["enterprise"] },
+    { id: "hygon", name: "海光架构", series: ["enterprise"] },
+  ],
+
+  engineVersions: [
+    { id: "5.0", name: "Redis 5.0", stable: true },
+    { id: "6.0", name: "Redis 6.0", stable: true },
+    { id: "7.0", name: "Redis 7.0", stable: false },
+  ],
+
+  architectures: [
+    { id: "standard", name: "标准版", description: "单机实例" },
+    { id: "cluster", name: "集群版", description: "分布式集群" },
+    { id: "sentinel", name: "哨兵版", description: "主从高可用" },
+  ],
+
+  nodeTypes: [
+    { id: "single", name: "单节点", architecture: "standard" },
+    { id: "master-slave", name: "主从节点", architecture: "sentinel" },
+    { id: "cluster-node", name: "集群节点", architecture: "cluster" },
+  ],
+
+  instances: [
+    { id: "1c1g", name: "1C1G", cpu: 1, memory: 1, price: 0.5 },
+    { id: "2c2g", name: "2C2G", cpu: 2, memory: 2, price: 1.0 },
+    { id: "4c4g", name: "4C4G", cpu: 4, memory: 4, price: 2.0 },
+    { id: "8c8g", name: "8C8G", cpu: 8, memory: 8, price: 4.0 },
+  ],
 };
 
 // 通用响应格式化函数
@@ -438,6 +580,179 @@ app.get("/api/positions/:id", (req, res) => {
   }
 });
 
+// ==================== Redis相关接口 ====================
+
+// 获取服务单元列表
+app.get("/api/redis/service-units", (req, res) => {
+  try {
+    const { systemCode, envType, status } = req.query;
+    let serviceUnits = mockData.serviceUnits;
+
+    // 根据系统代码过滤
+    if (systemCode) {
+      serviceUnits = serviceUnits.filter(
+        (unit) => unit.systemCode === systemCode
+      );
+    }
+
+    // 根据环境类型过滤
+    if (envType) {
+      serviceUnits = serviceUnits.filter((unit) => unit.envType === envType);
+    }
+
+    // 根据状态过滤
+    if (status) {
+      serviceUnits = serviceUnits.filter((unit) => unit.status === status);
+    }
+
+    // 模拟网络延迟
+    setTimeout(() => {
+      res.json(formatResponse(serviceUnits, "获取服务单元列表成功"));
+    }, 300 + Math.random() * 200);
+  } catch (error) {
+    res.status(500).json(formatError("获取服务单元列表失败", 500));
+  }
+});
+
+// 获取资源模板列表
+app.get("/api/redis/resource-templates", (req, res) => {
+  try {
+    setTimeout(() => {
+      res.json(formatResponse(mockData.resourceTemplates, "获取资源模板成功"));
+    }, 200);
+  } catch (error) {
+    res.status(500).json(formatError("获取资源模板失败", 500));
+  }
+});
+
+// 获取可用区列表
+app.get("/api/redis/zones", (req, res) => {
+  try {
+    const { region } = req.query;
+    let zones = mockData.zones;
+
+    if (region) {
+      zones = zones.filter((zone) => zone.region === region);
+    }
+
+    setTimeout(() => {
+      res.json(formatResponse(zones, "获取可用区成功"));
+    }, 150);
+  } catch (error) {
+    res.status(500).json(formatError("获取可用区失败", 500));
+  }
+});
+
+// 获取Redis版本类型
+app.get("/api/redis/series", (req, res) => {
+  try {
+    setTimeout(() => {
+      res.json(formatResponse(mockData.redisSeries, "获取版本类型成功"));
+    }, 100);
+  } catch (error) {
+    res.status(500).json(formatError("获取版本类型失败", 500));
+  }
+});
+
+// 获取CPU架构类型
+app.get("/api/redis/cpu-types", (req, res) => {
+  try {
+    const { series } = req.query;
+    let cpuTypes = mockData.cpuTypes;
+
+    if (series) {
+      cpuTypes = cpuTypes.filter((cpu) => cpu.series.includes(series));
+    }
+
+    setTimeout(() => {
+      res.json(formatResponse(cpuTypes, "获取CPU架构成功"));
+    }, 100);
+  } catch (error) {
+    res.status(500).json(formatError("获取CPU架构失败", 500));
+  }
+});
+
+// 获取引擎版本
+app.get("/api/redis/engine-versions", (req, res) => {
+  try {
+    const { stable } = req.query;
+    let versions = mockData.engineVersions;
+
+    if (stable !== undefined) {
+      const isStable = stable === "true";
+      versions = versions.filter((v) => v.stable === isStable);
+    }
+
+    setTimeout(() => {
+      res.json(formatResponse(versions, "获取引擎版本成功"));
+    }, 100);
+  } catch (error) {
+    res.status(500).json(formatError("获取引擎版本失败", 500));
+  }
+});
+
+// 获取架构类型
+app.get("/api/redis/architectures", (req, res) => {
+  try {
+    setTimeout(() => {
+      res.json(formatResponse(mockData.architectures, "获取架构类型成功"));
+    }, 100);
+  } catch (error) {
+    res.status(500).json(formatError("获取架构类型失败", 500));
+  }
+});
+
+// 获取节点类型
+app.get("/api/redis/node-types", (req, res) => {
+  try {
+    const { architecture } = req.query;
+    let nodeTypes = mockData.nodeTypes;
+
+    if (architecture) {
+      nodeTypes = nodeTypes.filter(
+        (node) => node.architecture === architecture
+      );
+    }
+
+    setTimeout(() => {
+      res.json(formatResponse(nodeTypes, "获取节点类型成功"));
+    }, 100);
+  } catch (error) {
+    res.status(500).json(formatError("获取节点类型失败", 500));
+  }
+});
+
+// 获取实例规格
+app.get("/api/redis/instances", (req, res) => {
+  try {
+    const { minCpu, maxCpu, minMemory, maxMemory } = req.query;
+    let instances = mockData.instances;
+
+    if (minCpu) {
+      instances = instances.filter((inst) => inst.cpu >= parseInt(minCpu));
+    }
+    if (maxCpu) {
+      instances = instances.filter((inst) => inst.cpu <= parseInt(maxCpu));
+    }
+    if (minMemory) {
+      instances = instances.filter(
+        (inst) => inst.memory >= parseInt(minMemory)
+      );
+    }
+    if (maxMemory) {
+      instances = instances.filter(
+        (inst) => inst.memory <= parseInt(maxMemory)
+      );
+    }
+
+    setTimeout(() => {
+      res.json(formatResponse(instances, "获取实例规格成功"));
+    }, 150);
+  } catch (error) {
+    res.status(500).json(formatError("获取实例规格失败", 500));
+  }
+});
+
 // ==================== 级联查询接口 ====================
 
 // 获取组织架构树形结构
@@ -512,5 +827,29 @@ app.listen(PORT, () => {
     `   - 组织架构: GET http://localhost:${PORT}/api/organization/tree`
   );
   console.log(`   - 地区城市: GET http://localhost:${PORT}/api/location/tree`);
+  console.log(``);
+  console.log(`📊 Redis相关接口:`);
+  console.log(
+    `   - 服务单元: GET http://localhost:${PORT}/api/redis/service-units`
+  );
+  console.log(
+    `   - 资源模板: GET http://localhost:${PORT}/api/redis/resource-templates`
+  );
+  console.log(`   - 可用区: GET http://localhost:${PORT}/api/redis/zones`);
+  console.log(`   - 版本类型: GET http://localhost:${PORT}/api/redis/series`);
+  console.log(`   - CPU架构: GET http://localhost:${PORT}/api/redis/cpu-types`);
+  console.log(
+    `   - 引擎版本: GET http://localhost:${PORT}/api/redis/engine-versions`
+  );
+  console.log(
+    `   - 架构类型: GET http://localhost:${PORT}/api/redis/architectures`
+  );
+  console.log(
+    `   - 节点类型: GET http://localhost:${PORT}/api/redis/node-types`
+  );
+  console.log(
+    `   - 实例规格: GET http://localhost:${PORT}/api/redis/instances`
+  );
+  console.log(``);
   console.log(`   - 健康检查: GET http://localhost:${PORT}/api/health`);
 });

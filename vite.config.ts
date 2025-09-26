@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // 代理所有以 /api 开头的请求到 localhost:3000
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://localhost:3001",
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, ""), // 移除 /api 前缀
       },

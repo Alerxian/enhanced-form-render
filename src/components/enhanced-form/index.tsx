@@ -1,13 +1,22 @@
 import React, { useMemo, useCallback, useEffect, useState } from "react";
 import FormRender, { useForm } from "form-render";
-import type { FRProps, Schema, WatchProperties } from "form-render";
+import type { FRProps, WatchProperties } from "form-render";
 import { asyncDataManager } from "../../utils/AsyncDataManager";
 import type {
   EnhancedSchema,
   EnhancedFieldSchema,
   SelectOption,
 } from "../../types/schema";
-import { genAsyncFields } from "./utils";
+import {
+  genAsyncFields,
+  processParams,
+  selectDefaultValue,
+  hasFieldValue,
+  hasDependencyValues,
+  updateSchemaWithAsyncData,
+  checkAsyncReadyState,
+  createInitialAsyncDataResults,
+} from "./utils";
 
 interface EnhancedFormRenderProps extends FRProps {
   schema: EnhancedSchema;
@@ -79,6 +88,32 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
             error: "",
           },
         }));
+
+        // 处理数据加载完成后的默认值设置
+        const { defaultValue } = config.asyncDataSource;
+        if (defaultValue && data.length > 0) {
+          const currentValue = form.getValueByPath(fieldPath);
+
+          // 只有当前字段没有值时才设置默认值
+          if (!hasFieldValue(currentValue)) {
+            const selectedValue = selectDefaultValue(defaultValue, data);
+
+            // 设置默认值
+            if (selectedValue !== undefined) {
+              form.setValues({
+                [fieldPath]: selectedValue,
+              });
+
+              // 如果配置了触发依赖字段，则手动触发依赖更新
+              if (defaultValue.triggerDependencies !== false) {
+                // 延迟一小段时间再触发，确保表单值已经更新
+                setTimeout(() => {
+                  handleDependencyChange(fieldPath);
+                }, 50);
+              }
+            }
+          }
+        }
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "获取数据失败";
@@ -92,120 +127,71 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
         }));
       }
     },
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [form]
   );
 
   // 初始化异步数据
   useEffect(() => {
     const initializeAsyncData = async () => {
       // 初始化所有异步字段的空状态
-      const initialResults: Record<
-        string,
-        {
-          data: SelectOption[];
-          loading: boolean;
-          error: string;
-        }
-      > = {};
-
-      asyncFields.forEach(({ path }) => {
-        initialResults[path] = {
-          data: [],
-          loading: false,
-          error: "",
-        };
-      });
-
+      const initialResults = createInitialAsyncDataResults(asyncFields);
       setAsyncDataResults(initialResults);
 
       // 获取无依赖字段的数据
       for (const { path, config } of asyncFields) {
         const { dependencies, params } = config.asyncDataSource || {};
         if (!dependencies || dependencies.length === 0) {
-          await fetchAsyncData(path, config, params || {});
+          // 处理初始化时的params参数
+          const processedParams = params ? processParams(params, form) : {};
+          await fetchAsyncData(path, config, processedParams);
         }
       }
     };
 
     initializeAsyncData();
-  }, [asyncFields, fetchAsyncData]);
+  }, [asyncFields, fetchAsyncData, form]);
 
   // 动态更新schema，注入异步数据
   const enhancedSchema = useMemo(() => {
-    const updateSchemaWithAsyncData = (
-      schemaNode: Schema,
-      path = ""
-    ): Schema => {
-      if (schemaNode.properties) {
-        const updatedProperties: Record<string, Schema> = {};
-
-        Object.entries(schemaNode.properties).forEach(([key, value]) => {
-          const currentPath = path ? `${path}.${key}` : key;
-          updatedProperties[key] = updateSchemaWithAsyncData(
-            value,
-            currentPath
-          );
-        });
-
-        return {
-          ...schemaNode,
-          properties: updatedProperties,
-        };
-      } else {
-        const asyncResult = asyncDataResults[path];
-        if (asyncResult) {
-          return {
-            ...schemaNode,
-            enum: asyncResult.data.map((item) => item.value),
-            enumNames: asyncResult.data.map((item) => item.label),
-            placeholder: asyncResult.loading
-              ? "正在加载选项..."
-              : asyncResult.error || schemaNode.placeholder,
-            disabled: asyncResult.loading || props.disabled,
-          };
-        }
-        return schemaNode;
-      }
-    };
-    return updateSchemaWithAsyncData(schema);
+    return updateSchemaWithAsyncData(schema, asyncDataResults, props.disabled);
   }, [schema, asyncDataResults, props.disabled]);
 
   // 处理依赖字段变化的统一函数
   const handleDependencyChange = useCallback(
-    (fieldName: string, value: unknown) => {
+    (fieldName: string) => {
       const dependentFields = dependencyMap.get(fieldName);
       if (!dependentFields) return;
 
-      console.log(`字段 ${fieldName} 变化:`, value);
+      // console.log(`字段 ${fieldName} 变化:`, value);
 
       dependentFields.forEach(({ path: targetPath, config: targetConfig }) => {
-        const { dependencies: deps, params } = targetConfig.asyncDataSource!;
+        const {
+          dependencies: deps,
+          params,
+          ready,
+        } = targetConfig.asyncDataSource!;
 
         // 获取所有依赖字段的当前值
         let contextParams: Record<string, unknown> = {};
-        let hasDependencyValue = false;
-
-        deps!.forEach((dependency) => {
-          const depValue = form.getValueByPath(dependency);
-          if (depValue !== undefined && depValue !== null && depValue !== "") {
-            hasDependencyValue = true;
-          }
-        });
+        const hasDependencyValue = hasDependencyValues(deps || [], form);
 
         // 处理params参数
         if (params) {
-          const paramsValues = Object.fromEntries(
-            Object.entries(params).map(([key, path]) => [
-              key,
-              form.getValueByPath(path),
-            ])
-          );
-          contextParams = { ...contextParams, ...paramsValues };
+          contextParams = processParams(params, form);
         }
 
+        const isReady = checkAsyncReadyState(
+          typeof ready === "string" ? true : ready,
+          form.getValues()
+        );
+
         // 根据依赖字段的值决定是否获取数据
-        if (hasDependencyValue) {
-          fetchAsyncData(targetPath, targetConfig, contextParams);
+        if (hasDependencyValue && isReady) {
+          // 将异步请求操作延迟执行，避免循环依赖
+          setTimeout(() => {
+            fetchAsyncData(targetPath, targetConfig, contextParams);
+          }, 0);
         } else {
           // 清空数据和字段值
           setAsyncDataResults((prev) => ({
@@ -230,26 +216,11 @@ const EnhancedFormRender: React.FC<EnhancedFormRenderProps> = ({
 
     // 为所有有依赖的字段添加监听器
     dependencyMap.forEach((_, fieldName) => {
-      watch[fieldName] = (value: unknown) => {
-        handleDependencyChange(fieldName, value);
+      watch[fieldName] = () => {
+        handleDependencyChange(fieldName);
       };
     });
 
-    JSON.stringify(
-      {
-        fn: () => {
-          return 1;
-        },
-        a: 1,
-      },
-      (key, value) => {
-        if (typeof value === "function") {
-          value = value.toString();
-        }
-        return value;
-      },
-      2
-    );
     // 合并外部传入的watch配置，外部配置优先级更高
     if (props.watch) {
       Object.entries(props.watch).forEach(([fieldName, handler]) => {

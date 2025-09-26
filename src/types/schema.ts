@@ -18,7 +18,25 @@ export interface AsyncDataSource {
   // 依赖字段，当这些字段变化时重新请求
   dependencies?: string[];
   /** 是否可以开始请求 */
-  ready?: boolean;
+  ready?: boolean | string | ((formData: any) => boolean);
+  // 数据加载完成后的默认值设置配置
+  defaultValue?: {
+    // 静态默认值
+    value?: string | number;
+    // 动态默认值选择器 - 根据加载的数据选择默认值
+    selector?: {
+      // 按值匹配
+      byValue?: string | number;
+      // 按标签匹配
+      byLabel?: string;
+      // 按索引选择（0为第一个）
+      byIndex?: number;
+      // 自定义选择函数
+      custom?: (options: SelectOption[]) => string | number | undefined;
+    };
+    // 是否触发依赖字段的数据加载
+    triggerDependencies?: boolean;
+  };
 }
 
 // 选项数据类型

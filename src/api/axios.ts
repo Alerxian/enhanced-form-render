@@ -8,7 +8,7 @@ import type {
 
 // 创建 axios 实例
 const apiClient: AxiosInstance = axios.create({
-  baseURL: "/api", // 使用相对路径，配合 vite 代理
+  baseURL: "/", // 使用相对路径，配合 vite 代理
   timeout: 10000, // 请求超时时间
   headers: {
     "Content-Type": "application/json",
